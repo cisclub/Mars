@@ -5,7 +5,7 @@
 
 
 # Mars
-Script to list unused xib and storyboard in an xcode project
+Script to list unused xib and storyboard files in an xcode project.
 
 ## Requirements:
 - Script must be run in [fish shell](https://fishshell.com/)
@@ -18,7 +18,7 @@ Script to list unused xib and storyboard in an xcode project
   
 ## How it works
 
-## backlog
+## Backlog
 - Add option to delete files
 - Add option to set a limit for number of files to check (script is very slow)
 - Optimization
