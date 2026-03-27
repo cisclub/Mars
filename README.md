@@ -2,7 +2,7 @@
 Script to list unused xib and storyboard in an xcode project
 
 ## Requirements:
-- [fish shell](https://fishshell.com/)
+- Script must be run in [fish shell](https://fishshell.com/)
 
 ## How to use
 
