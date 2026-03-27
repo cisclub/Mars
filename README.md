@@ -1,6 +1,9 @@
 # Mars
 Script to list unused xib and storyboard in an xcode project
 
+## Requirements:
+- [fish shell](https://fishshell.com/)
+
 ## How to use
 
 ## Notes:
