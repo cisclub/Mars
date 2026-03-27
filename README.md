@@ -20,3 +20,5 @@ Script to list unused xib and storyboard in an xcode project
 
 ## backlog
 - Add option to delete files
+- Add option to set a limit for number of files to check (script is very slow)
+- Optimization
