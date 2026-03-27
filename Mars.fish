@@ -13,9 +13,9 @@ set -l toRemove
 set count 1
 for withExt in $all
     set count (math $count + 1)
-    if test $count -eq 200
-        break
-    end
+    # if test $count -eq 200
+    #     break
+    # end
     set nib (path change-extension '' $withExt)
     printf "%s: " $withExt
     set filesContainXib (grep -rl --include="*.xib" --include="*.storyboard" --include="*.swift" $nib)
