@@ -17,3 +17,6 @@ Script to list unused xib and storyboard in an xcode project
 - Script doesn't delete files. It will list them only
   
 ## How it works
+
+## backlog
+- Add option to delete files
