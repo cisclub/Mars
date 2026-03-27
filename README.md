@@ -1,3 +1,9 @@
+
+<p align="center">
+  <img width="265" height="265" alt="mars" src="https://github.com/user-attachments/assets/ecc15187-c70b-42a6-a60a-4f575be91fab" />
+</p>
+
+
 # Mars
 Script to list unused xib and storyboard in an xcode project
 
@@ -10,3 +16,4 @@ Script to list unused xib and storyboard in an xcode project
 - There is no guarantee there will not be false-positive(s) or false-negative(s).
 - Script doesn't delete files. It will list them only
   
+## How it works
