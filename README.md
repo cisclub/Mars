@@ -36,3 +36,4 @@ This will scan all files.
 - [done] Add option to set a limit for number of files to check (script is very slow)
 - Optimization
 - Add option to pass exception file (Strings.swift shouldn't count as used)
+- Calculate total size
