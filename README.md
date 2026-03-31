@@ -20,7 +20,7 @@ Script to list unused xib and storyboard files in an xcode project.
 If the command takes long time, you can limit the number of files to scan (to 100 for example).</br>
 
 **Example:** `fish ~/Downloads/Mars.fish ~/my-project-directory 200`</br>
-This will scan only 100 `.xib` and `.storyboard` files in /my-project-directory before it exits and print summary.</br>
+This will scan only 100 `.xib` and `.storyboard` files in /my-project-directory before it prints summary and exit.</br>
 
 **Example:** `fish ~/Downloads/Mars.fish ~/my-project-directory`</br>
 This will scan all files.
