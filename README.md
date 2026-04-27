@@ -37,3 +37,4 @@ This will scan all files.
 - Optimization
 - Add option to pass exception file (Strings.swift shouldn't count as used)
 - Calculate total size
+- Report in output file
