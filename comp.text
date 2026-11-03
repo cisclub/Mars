@@ -2,7 +2,7 @@ COMPACTION STATE — MobileDigitalApp iOS (mobiledigitalappios 13)
 Updated: 2026-11-03
 
 Repo root:            /Users/aliamin/gitcloned/mobiledigitalappios 13
-This file:            ~/gitcloned/Mars/comp.text  (only at user's compaction request)
+This file:            ~/gitcloned/Mars/comp.text  (update on EVERY compaction request)
 
 ====================================================================
 0. USER WORKFLOW RULES (standing)
@@ -23,79 +23,85 @@ This file:            ~/gitcloned/Mars/comp.text  (only at user's compaction req
 - Mocks only under `#if DEBUG`; Imp otherwise.
 - If Xcode-side changes are found, ask keep/discard before acting.
 - DO NOT spawn the reviewer subagent unless explicitly asked. Verify myself.
-- Update this file only when the user asks for a compaction.
+- Always update this file when doing a compaction (user's explicit instruction).
 
 ====================================================================
 1. WHERE WE ARE (2026-11-03)
 ====================================================================
-State: SmartHome addon details + device details scenes are BUILT and wired end to end.
-  Addons list -> addon details bottom sheet -> device details bottom sheet, all from
-  data (repos/usecases/mocks), no hard-coded copy left in either details screen.
-Verified: swiftc -parse, xmllint, ibtool --compile, plutil -lint (see §5).
+State: SmartHome addon details scene is DONE and fully data-driven.
+  SmartHomeDeviceDetails scene is WRITTEN but currently UNREACHABLE: the addon
+  coordinator's deviceDetailsTapped() was intentionally emptied and its stored
+  viewController/use-case wiring removed at the user's request, so nothing constructs
+  SmartHomeDeviceDetailsCoordinator yet. Needs a new entry point (likely from
+  SmartHomeAddonsCoordinator, which still has the navigation stack).
+Verified: swiftc -parse (all touched files), xmllint, ibtool --compile, plutil -lint.
 Not verified: full compile/build — environment cannot build (§5).
-Not committed: everything below is working-tree only (see §4).
+Not committed: all changes are working-tree only (§4).
 
 ====================================================================
-2. SmartHomeDeviceDetails SCENE (NEW, 2026-11-03)
+2. SmartHomeDeviceDetails SCENE (built, not yet presented)
 ====================================================================
 Path: EtisalatUAE/EtisalatUAE/Digital2022/Scenes/SmartHome/SmartHomeDeviceDetails/
   Domain/SmartHomeDeviceDetailsViewModel.swift
   SmartHomeDeviceDetailsCoordinator.swift        (also holds SmartHomeDeviceDetailsUseCases)
   Presentation/SmartHomeDeviceDetailsViewController.swift
 
-Flow:
-- Tapping a device card in addon details -> VM actions.deviceDetailsTapped ->
-  SmartHomeAddonDetailsCoordinator.deviceDetailsTapped() -> builds + starts
-  SmartHomeDeviceDetailsCoordinator(input: viewController + deviceDetailsUseCase).
-- Addon coordinator keeps `private weak var viewController` and
-  `private var deviceDetailsUseCase` (assigned in start()); the use case is created once
-  in the addon coordinator, so there is a single repo construction path.
-- Details sheet is presented from the addon sheet VC (sheet-over-sheet, .pageSheet,
-  [#available(iOS 15)] detents [.large()] + grabber). Close X dismisses.
+Coordinator:
+- input = SmartHomeDeviceDetailsCoordinatorInput(viewController: UIViewController,
+  deviceDetailsUseCase: SmartHomeDeviceDetailsUseCase); presents .pageSheet with
+  [#available(iOS 15)] detents [.large()] + grabber, from the "SmartHome" storyboard.
+- SmartHomeDeviceDetailsUseCases struct lives in this file (single field:
+  deviceDetailsUseCase) and is injected into the VM — the coordinator never builds
+  repos itself, so the caller owns repo construction.
 
-View model:
-- Observable: dataSource, scrollToRow (Int?), screenTitle (String?).
+View model (current, after the 2026-11-03 simplification):
+- Observable: dataSource, screenTitle (String?). No scrollToRow, no tabs, no row indexes.
 - viewDidLoad -> deviceDetailsUseCase.execute(input: ()) -> on error actions.showError,
   else screenTitle + dataSource from response.
-- Tabs scroll to section rows via scrollToRow (indexes tracked when building the list).
-- Response sections -> cells:
-    tabs            -> TabsCellModel
-    overview        -> SmartHomeAddonDetailsBenefitCellModel(title: sectionHeading,
-                       footnote: description)  [imageVideoUrl deliberately NOT rendered:
-                       it is an .mp4 and no existing cell takes a bare video URL]
-    keyHighlights   -> heading LabelCellModel + SmartHomeAddonDetailsBulletCellModel each
-    compatibility   -> same heading/description/bullets pattern
+- getDataSource() order: appendHighlightsSection -> appendCompatibilitySection ->
+  appendDevicesSection -> appendSpecificationsSection. appendOverviewSection removed.
+- Section -> cell mapping:
+    keyHighlights   -> heading LabelCellModel + description LabelCellModel +
+                       SmartHomeAddonDetailsBulletCellModel per bullet
+    compatibility   -> same heading/description/bullets block (appendTextSection)
     smartDevices    -> heading LabelCellModel + SmartHomeAddonDetailsDevicesCellModel
-                       (selectDeviceHandler = live no-op: API takes no per-device params)
-    specifications  -> heading LabelCellModel + description LabelCellModel +
-                       title/description LabelCellModel pairs
-    spacers         -> GenericSpaceCellVwModel
-- Headings are LabelCellModel(.h8, midnight110, bgMidnight5); paragraphs are LabelCellModel.
+                       (selectDeviceHandler = empty no-op: API takes no device params)
+    specifications  -> heading LabelCellModel + description LabelCellModel + 16pt spacer
+                       + KeyValueCellModel(key: row.titleText, value: row.descriptionText)
+                       per row, rows contiguous (KeyValueCell is a fixed 30pt row)
+    spacers         -> GenericSpaceCellVwModel (24 between sections)
+- Headings: LabelCellModel(.h8, midnight110, bgMidnight5). Paragraphs: LabelCellModel
+  (.f10, midnight50). Devices come from smartDevices.cmsDevicesScroll.
+- overview (incl. overview.imageVideoUrl) is NOT rendered at all: the field is an .mp4 and
+  no reusable cell takes a bare video URL.
+- tabs from the response are ignored on this screen.
 
 Cells used (searched first, nothing new created): SmartHomeAddonDetailsBenefitCell,
 SmartHomeAddonDetailsBulletCell, SmartHomeAddonDetailsDevicesCell,
-SmartHomeAddonDetailsDeviceItemCell, LabelCell, TabsCell, GenericSpaceCell.
-Rejected after checking: SmartHomeAddonsIncludedCell (always shows chevron),
+SmartHomeAddonDetailsDeviceItemCell, LabelCell, GenericSpaceCell, KeyValueCell.
+Rejected earlier: SmartHomeAddonsIncludedCell (always shows chevron),
 SHDeviceLandingDeliveryInfoCell (fixed 72pt icon + fixed title height),
 SHVideoBannerCell (needs thumbnail + play image).
+NOTE: KeyValueCell hardcodes .left/.right alignment in its own viewModelAssigned(), so
+spec rows do not mirror in Arabic — accepted because it is the cell the user named.
 
 Storyboard (SmartHome.storyboard, scene `sdd-vc`):
 - storyboardIdentifier "SmartHomeDeviceDetailsViewController"; root bgMidnight5
-  (0.9568627451/0.9529411765/0.9607843137, systemBackgroundColor named color kept);
-  BaseLabel title safeArea.top+16 / leading+16; 32x32 close centerY with title,
-  trailing = safeArea.trailing-16; StandardTableView (dataMode none, plain, no separators)
-  top = title.bottom+8, leading/trailing/bottom to view; outlets titleLabel, closeButton,
-  tableView (VC subclasses StandardListViewController).
+  (0.9568627451/0.9529411765/0.9607843137); BaseLabel title safeArea.top+16 / leading+16;
+  32x32 close centerY with title, trailing = safeArea.trailing-16; StandardTableView
+  (dataMode none, plain, no separators) top = title.bottom+8, leading/trailing/bottom to
+  view; outlets titleLabel, closeButton, tableView (VC subclasses StandardListViewController).
 
 Project registration: group FD0000000000000000000000 (SmartHomeDeviceDetails) with
 Domain/Presentation subgroups FD...04/05, file refs FD...01/02/03, build files FD...11/12/13,
 child of the SmartHome group, entries in the app Sources phase.
 
-Data layer (pre-existing, unchanged today):
-  .../SmartHomeAddonDetailsScene/Data/SmartHomeDeviceDetailsRepo.swift
-  .../Data/SmartHomeDeviceDetailsResponse.swift
-  .../Domain/SmartHomeDeviceDetailsUseCase.swift
-  Mock: title/tabs/overview/keyHighlights/compatibility/smartDevices/specifications.
+Data layer (pre-existing): SmartHomeAddonDetailsScene/Data/SmartHomeDeviceDetailsRepo.swift
+  (Imp + Mock), Data/SmartHomeDeviceDetailsResponse.swift,
+  Domain/SmartHomeDeviceDetailsUseCase.swift.
+  Endpoint: EndPoints.SmartHome.deviceDetails =
+  "devices/api/smarthome-devicedetails-headlessdata".
+  Mock payload: title/tabs/overview/keyHighlights/compatibility/smartDevices/specifications.
 
 ====================================================================
 3. SMART HOME ADDON DETAILS SCENE (done)
@@ -106,9 +112,15 @@ Path: .../Scenes/SmartHome/SmartHomeAddonDetailsScene/
   Presentation/Cells/SmartHomeAddonDetailsBenefitCell.swift/.xib,
   Presentation/Cells/SmartHomeAddonDetailsDevicesCell.swift/.xib,
   Presentation/Cells/SmartHomeAddonDetailsDeviceItemCell.swift/.xib
-  (Section header cell was deleted; section headers are LabelCell.)
+  (Section header cell deleted; section headers are LabelCell.)
+- Coordinator: `SmartHomeAddonDetailsUseCases` now holds ONLY howItWorksUseCase
+  (deviceDetailsUseCase removed). No stored viewController. `deviceDetailsTapped()` is an
+  empty method (kept as the hook for the future device-details entry point).
+  VM action closure still calls self.deviceDetailsTapped().
 - Fully data-driven from the howItWorks response (tabs, overview, smartDevices,
-  freeInstallSupport, promotions, additionalBenifits).
+  freeInstallSupport, promotions, additionalBenifits). Its own tab bar + section scrolling
+  (scrollToRow, selectedTabIndex, overviewRowIndex/freeInstallRowIndex) is still intact
+  here — that logic belongs to this scene, not to device details.
 - Presented as a .pageSheet from SmartHomeAddonsCoordinator; scene lives in
   SmartHome.storyboard as "SmartHomeAddonDetailsViewController" (old dedicated storyboard
   deleted). Close X dismisses.
@@ -135,7 +147,7 @@ Path: .../Scenes/SmartHome/SmartHomeAddonDetailsScene/
 - SmartHomeConfigurationViewModel.createDataSourceAndUpdateView().
 - HybridAddOnsViewController.m: SmartHomeAddonsCoordinatorWrapper wiring.
 - SmartHomeAddonsViewModel.showServiceDetails(_ title: String, _ url: String).
-- All recent SmartHome work is in `wip` commits. Working tree (KEEP ALL):
+- Recent SmartHome work sits in `wip` commits. Working tree (KEEP ALL):
     M EtisalatUAE/EtisalatUAE.xcodeproj/project.pbxproj
     M .../HomeScreenScene/Coordinator/HomeScreenCoordinator.swift
     M .../SmartHomeAddonDetailsScene/SmartHomeAddonDetailsCoordinator.swift
@@ -157,23 +169,26 @@ Path: .../Scenes/SmartHome/SmartHomeAddonDetailsScene/
     plutil -lint EtisalatUAE/EtisalatUAE.xcodeproj/project.pbxproj
 - Constraints/gotchas:
   - `instanceFromStoryboard` needs an explicit type annotation on the let.
-  - `instanceFromStoryboard` calls `setupBinding()` for us (StandardViewController) — the
-    base class does NOT call it from viewDidLoad, so bindings exist before the data loads.
+  - `instanceFromStoryboard` calls `setupBinding()` for us; StandardViewController does NOT
+    call it from viewDidLoad, so bindings exist before the data loads.
+  - StandardListViewController auto-registers a nib per model.reusableIdentifier(), so any
+    xib already in the app target (KeyValueCell, LabelCell, TabsCell...) just works.
   - SmartHomeAddonDetailsDeviceItemCell has static func identifier() (UICollectionViewCell).
   - TabsCell binds selectedTabIndex with notifyDelegate true (cellSelected on appearance).
   - MEBaseViewController constrains view only when mainContainerView is set (ours is nil).
   - Deployment target 15.6 (some targets 12.0) -> always guard sheet APIs with #available.
   - Locale.isArabic; Images.SmartHome.calendar = calendar_check.
-  - Do not pipe build/install output through tail without pipefail; use ${PIPESTATUS[0]}.
+  - When piping a command through head/tail, read ${PIPESTATUS[0]} for the real status.
 
 ====================================================================
 6. OPEN ITEMS / LIKELY NEXT
 ====================================================================
-1. Device details overview media (overview.imageVideoUrl) is not shown — would need a
-   video/thumbnail cell (none reusable today).
+1. Give SmartHomeDeviceDetails a real entry point (deviceDetailsTapped is empty and the
+   coordinator is never constructed); SmartHomeAddonsCoordinator owns the nav stack.
 2. Device cards inside device details are non-interactive by design (no API params).
-3. Cosmetic: indent fix in SmartHomeAddonDetailsViewModel.getDataSource().
-4. Verify on device/simulator once Pods/DerivedData are repaired (live request flow,
+3. KeyValueCell RTL alignment (.left/.right hardcoded) if Arabic mirroring matters.
+4. Cosmetic: indent fix in SmartHomeAddonDetailsViewModel.getDataSource().
+5. Verify on device/simulator once Pods/DerivedData are repaired (live request flow,
    RTL/Arabic pass, sheet stacking behaviour).
 
 (End of file)
