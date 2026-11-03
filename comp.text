@@ -52,6 +52,17 @@ Not committed: working tree only (§4).
   Already used in this VM (outOfStock) and auto-registered by StandardListViewController.
 - InfoCardTableViewCellIconType: added case .notificationWarning ->
   UIImage(named: "notification-warning-icon") (asset in HomeMoveRevamp.xcassets).
+- InfoCardTableViewCell is SHARED (SetupAutoPay, DevicePurchaseLanding, SmartHomeConfiguration
+  outOfStock). To avoid breaking those, layout is now per-use configurable via the model:
+    sideMargin (default 16), iconLeadingMargin (default 16), labelTrailingMargin (default 16),
+    cellHeight (default nil -> height constraint inactive, auto height).
+  xib exposes containerLeading/Trailing, iconLeading, labelTrailing, containerHeight constraints
+  as outlets; cell applies them in applyLayout() from viewModelAssigned/updateUITONormalState.
+- SmartHome banner call passes sideMargin 0, iconLeadingMargin 24, labelTrailingMargin 24,
+  cellHeight 28. Other call sites keep defaults (unchanged appearance).
+- NOTE: at 28pt height the label's original top/bottom 12pt constraints may compress/clip
+  multiline text; if text should be vertically centered in 28pt, adjust label top/bottom
+  constraints (not yet done — pending user confirmation).
 - Strings+SmartHome.swift: added addonOutOfStock -> "smart_home_addon_out_of_stock".
 - English_Resources.plist + Arabic_Resources.plist: added key
   smart_home_addon_out_of_stock = "Sorry, this add-on is out of stock"
