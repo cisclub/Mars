@@ -195,8 +195,8 @@ Path: .../Scenes/SmartHome/SmartHomeAddonDetailsScene/
 - The SmartHome scene files (incl. SmartHomeDeviceDetails/) were committed by the user
   mid-session; always re-run `git status` before assuming what is uncommitted.
 - The included-bundle out-of-stock banner work (§2a: InfoCardTableViewCell .notificationWarning
-  case, Strings+SmartHome.addonOutOfStock, both Resources plists, and the VM inStock/banner
-  logic) was ALSO committed by the user mid-session (commits fa75098cd3c / ccc53a5347).
+  case + per-use layout params, Strings+SmartHome.addonOutOfStock, both Resources plists,
+  and the VM inStock/banner logic) was ALSO committed by the user mid-session.
 - Working tree at last compaction (KEEP ALL):
     M .../HomeScreenScene/Coordinator/HomeScreenCoordinator.swift
     M .../SmartHomeConfigurationScene/Domain/SmartHomeConfigurationViewModel.swift
