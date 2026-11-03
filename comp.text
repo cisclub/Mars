@@ -31,6 +31,8 @@ This file:            ~/gitcloned/Mars/comp.text  (update on EVERY compaction re
 State: Both SmartHome detail scenes are built, data-driven and connected:
   addons list -> addon details sheet -> device details sheet (overview banner included).
 NEW: SmartHomeConfigurationViewModel out-of-stock banner for included bundle (see 2a).
+NEW: howItWorks + deviceDetails now send cmsUrl/productType via SmartHomeHowItWorksRequest
+  (see 2c); addon details coordinator no longer uses mocks.
 Verified: swiftc -parse on every touched Swift file, xmllint, ibtool --compile,
   plutil -lint, mock JSON re-parsed with python json.
 Not verified: full compile/build (environment cannot build, §5); nothing run on device.
@@ -89,6 +91,37 @@ Not committed: working tree only (§4).
   * didTapRadio() guards model.state.value != .disabled (in addition to != .selected).
 - Radio PNGs are fixed-color assets; gray radio achieved via template rendering + tint.
 - Committed by user mid-session (SmartHomeAddonsRadioCell.swift clean in working tree).
+
+====================================================================
+2c. HOWITWORKS + DEVICEDETAILS REQUEST (cmsUrl/productType) (DONE)
+====================================================================
+- NEW file Data/SmartHomeHowItWorksRequest.swift: extends SWBaseRequestModel with
+  cmsUrl: String + productType: String. init(cmsUrl:productType:) has NO defaults
+  (empty-string defaults removed per user). CodingKeys + encode + decode.
+  Registered in project.pbxproj (Data group, Sources phase).
+- SmartHomeHowItWorksUseCase.Input: { cmsUrl: String, productType: String },
+  init no defaults; InputType = Input; execute forwards input to repo.
+- SmartHomeHowItWorksRepoImp: builds SmartHomeHowItWorksRequest(cmsUrl:input.cmsUrl,
+  productType:input.productType) and posts toParamDictionary (was bare SWBaseRequestModel).
+- SmartHomeDeviceDetailsUseCase.Input: same { cmsUrl, productType } (explicit init removed —
+  memberwise init used). SmartHomeDeviceDetailsRepoImp builds the SAME
+  SmartHomeHowItWorksRequest and posts to EndPoints.SmartHome.deviceDetails.
+- Threading (addon details): SmartHomeAddonsViewModel details action passes
+  service.addonDetailsUrl ?? "" and service.productId -> showServiceDetails(title, url, productType)
+  (action signature gained productType param). SmartHomeAddonsCoordinatorWrapper forwards
+  url->cmsUrl and productType into SmartHomeAddonDetailsCoordinatorInput (now has cmsUrl +
+  productType). Coordinator passes both to SmartHomeAddonDetailsViewModel (stores cmsUrl/productType)
+  and to howItWorks execute(input: .init(cmsUrl:productType:)).
+- deviceDetailsTapped: VM action is now (_ cmsUrl: String, _ productType: String) -> Void;
+  devices cell selectDeviceHandler calls actions.deviceDetailsTapped(cmsUrl, productType).
+  Coordinator deviceDetailsTapped(cmsUrl:productType:) builds SmartHomeDeviceDetailsCoordinatorInput
+  (now has cmsUrl + productType + deviceDetailsUseCase) and SmartHomeDeviceDetailsUseCase(repo:).
+  Device details VM stores cmsUrl/productType and executes
+  deviceDetailsUseCase.execute(input: .init(cmsUrl:productType:)).
+- SmartHomeAddonDetailsCoordinator: NO MOCKS — start() and deviceDetailsTapped() always use
+  RepoImp(network: NetworkManager.self). (RepoMock structs still exist under #if DEBUG in the
+  repo files but are unreferenced.)
+- Committed by user mid-session.
 
 ====================================================================
 2. SmartHomeDeviceDetails SCENE
@@ -210,17 +243,21 @@ Path: .../Scenes/SmartHome/SmartHomeAddonDetailsScene/
   Strings.SmartHome.addToYourPlan.
 - SmartHomeConfigurationViewModel.createDataSourceAndUpdateView().
 - HybridAddOnsViewController.m: SmartHomeAddonsCoordinatorWrapper wiring.
-- SmartHomeAddonsViewModel.showServiceDetails(_ title: String, _ url: String).
+- SmartHomeAddonsViewModel.showServiceDetails(_ title: String, _ url: String, _ productType: String)
+  (gained productType param; url = service.addonDetailsUrl, productType = service.productId).
 - The SmartHome scene files (incl. SmartHomeDeviceDetails/) were committed by the user
   mid-session; always re-run `git status` before assuming what is uncommitted.
-- The included-bundle out-of-stock banner work (§2a) and the additional-devices radio
-  disable work (§2b) were ALSO committed by the user mid-session.
+- The included-bundle out-of-stock banner work (§2a), the additional-devices radio
+  disable work (§2b), and the cmsUrl/productType request + no-mocks work (§2c) were ALSO
+  committed by the user mid-session (incl. SmartHomeHowItWorksRequest.swift pbxproj registration).
 - Working tree at last compaction (KEEP ALL):
     M .../HomeScreenScene/Coordinator/HomeScreenCoordinator.swift
     M .../SmartHomeConfigurationScene/Domain/SmartHomeConfigurationViewModel.swift
       (only uncommitted VM diff: added createDataSourceAndUpdateView() in the else branch
        of getDeviceDetail's response handler — user's own change)
     M .../Sections/Etisalat Store/EtisalatShop/ViewController/HybridAddOnsViewController.m
+    M EtisalatUAE.xcodeproj/project.pbxproj
+      (only uncommitted pbxproj diff: CURRENT_PROJECT_VERSION 449 -> 4499 — user's own change)
 
 ====================================================================
 5. VERIFICATION / ENVIRONMENT
@@ -266,5 +303,8 @@ Path: .../Scenes/SmartHome/SmartHomeAddonDetailsScene/
    multiline text; confirm whether label/icon should be vertically centered in 28pt instead.
 7. Verify on device/simulator once Pods/DerivedData are repaired (live request flow,
    RTL/Arabic pass, sheet stacking behaviour, banner image loading).
+8. SmartHomeHowItWorksRepoMock / SmartHomeDeviceDetailsRepoMock structs still exist under
+   #if DEBUG in the repo files but are now unreferenced (coordinator uses Imp only). Delete
+   them if no longer needed for manual testing.
 
 (End of file)
