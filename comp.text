@@ -28,18 +28,15 @@ This file:            ~/gitcloned/Mars/comp.text  (update on EVERY compaction re
 ====================================================================
 1. WHERE WE ARE (2026-11-03)
 ====================================================================
-State: SmartHome addon details scene is DONE and fully data-driven.
-  SmartHomeDeviceDetails scene is WRITTEN but currently UNREACHABLE: the addon
-  coordinator's deviceDetailsTapped() was intentionally emptied and its stored
-  viewController/use-case wiring removed at the user's request, so nothing constructs
-  SmartHomeDeviceDetailsCoordinator yet. Needs a new entry point (likely from
-  SmartHomeAddonsCoordinator, which still has the navigation stack).
-Verified: swiftc -parse (all touched files), xmllint, ibtool --compile, plutil -lint.
-Not verified: full compile/build — environment cannot build (§5).
-Not committed: all changes are working-tree only (§4).
+State: Both SmartHome detail scenes are built, data-driven and connected:
+  addons list -> addon details sheet -> device details sheet (overview banner included).
+Verified: swiftc -parse on every touched Swift file, xmllint, ibtool --compile,
+  plutil -lint, mock JSON re-parsed with python json.
+Not verified: full compile/build (environment cannot build, §5); nothing run on device.
+Not committed: working tree only (§4).
 
 ====================================================================
-2. SmartHomeDeviceDetails SCENE (built, not yet presented)
+2. SmartHomeDeviceDetails SCENE
 ====================================================================
 Path: EtisalatUAE/EtisalatUAE/Digital2022/Scenes/SmartHome/SmartHomeDeviceDetails/
   Domain/SmartHomeDeviceDetailsViewModel.swift
@@ -47,61 +44,79 @@ Path: EtisalatUAE/EtisalatUAE/Digital2022/Scenes/SmartHome/SmartHomeDeviceDetail
   Presentation/SmartHomeDeviceDetailsViewController.swift
 
 Coordinator:
-- input = SmartHomeDeviceDetailsCoordinatorInput(viewController: UIViewController,
-  deviceDetailsUseCase: SmartHomeDeviceDetailsUseCase); presents .pageSheet with
-  [#available(iOS 15)] detents [.large()] + grabber, from the "SmartHome" storyboard.
-- SmartHomeDeviceDetailsUseCases struct lives in this file (single field:
-  deviceDetailsUseCase) and is injected into the VM — the coordinator never builds
-  repos itself, so the caller owns repo construction.
+- SmartHomeDeviceDetailsCoordinatorInput = navigationController: UINavigationController +
+  deviceDetailsUseCase: SmartHomeDeviceDetailsUseCase.
+- start() presents the scene as .pageSheet (large detent + grabber) from:
+      let presenter = input.navigationController.presentedViewController ?? input.navigationController
+      presenter.present(viewController, animated: true)
+  The fallback matters: device details is opened while the addon details sheet is already
+  presented by that nav controller, and presenting on the nav controller itself would log
+  "already presenting" and silently fail.
+- Repos are NOT built here; the use case is injected, so the caller owns construction.
 
-View model (current, after the 2026-11-03 simplification):
-- Observable: dataSource, screenTitle (String?). No scrollToRow, no tabs, no row indexes.
-- viewDidLoad -> deviceDetailsUseCase.execute(input: ()) -> on error actions.showError,
-  else screenTitle + dataSource from response.
-- getDataSource() order: appendHighlightsSection -> appendCompatibilitySection ->
-  appendDevicesSection -> appendSpecificationsSection. appendOverviewSection removed.
+Entry point (addon details coordinator):
+- deviceDetailsTapped() builds the repo (#if DEBUG Mock / Imp), creates
+  SmartHomeDeviceDetailsUseCase, then:
+      let coordinatorInput = SmartHomeDeviceDetailsCoordinatorInput(
+          navigationController: input.navigationController,
+          deviceDetailsUseCase: SmartHomeDeviceDetailsUseCase(repo: repo))
+      let coordinator = SmartHomeDeviceDetailsCoordinator(input: coordinatorInput)
+      deviceDetailsCoordinator = coordinator
+      coordinator.start()
+- Addon coordinator stores `private var deviceDetailsCoordinator` (retention only, same
+  pattern as SmartHomeAddonsCoordinatorWrapper). It does NOT store a view controller.
+- SmartHomeAddonDetailsUseCases still holds ONLY howItWorksUseCase.
+
+View model:
+- Observable: dataSource, screenTitle (String?). No tabs, no scrollToRow, no row indexes.
+- getDataSource() order:
+    1. appendOverviewImage      -> index 0, the overview banner
+    2. appendHighlightsSection
+    3. appendCompatibilitySection
+    4. appendDevicesSection
+    5. appendSpecificationsSection
 - Section -> cell mapping:
+    overview        -> SHCompatibilityTableViewCell.Model(imageUrl: overview.imageVideoUrl)
+                       (image only, no video: see cells note below)
     keyHighlights   -> heading LabelCellModel + description LabelCellModel +
                        SmartHomeAddonDetailsBulletCellModel per bullet
-    compatibility   -> same heading/description/bullets block (appendTextSection)
+    compatibility   -> same heading/description/bullets block (appendTextSection, 24 spacer)
     smartDevices    -> heading LabelCellModel + SmartHomeAddonDetailsDevicesCellModel
                        (selectDeviceHandler = empty no-op: API takes no device params)
-    specifications  -> heading LabelCellModel + description LabelCellModel + 16pt spacer
-                       + KeyValueCellModel(key: row.titleText, value: row.descriptionText)
-                       per row, rows contiguous (KeyValueCell is a fixed 30pt row)
-    spacers         -> GenericSpaceCellVwModel (24 between sections)
+    specifications  -> heading LabelCellModel + description LabelCellModel + 16pt spacer +
+                       KeyValueCellModel(key: row.titleText, value: row.descriptionText) per
+                       row, contiguous (KeyValueCell is a fixed 30pt row)
 - Headings: LabelCellModel(.h8, midnight110, bgMidnight5). Paragraphs: LabelCellModel
-  (.f10, midnight50). Devices come from smartDevices.cmsDevicesScroll.
-- overview (incl. overview.imageVideoUrl) is NOT rendered at all: the field is an .mp4 and
-  no reusable cell takes a bare video URL.
-- tabs from the response are ignored on this screen.
+  (.f10, midnight50). Devices: smartDevices.cmsDevicesScroll.
+- The overview heading/description are deliberately NOT rendered; only its banner image.
+- Detail screen ignores response `tabs` entirely.
 
-Cells used (searched first, nothing new created): SmartHomeAddonDetailsBenefitCell,
-SmartHomeAddonDetailsBulletCell, SmartHomeAddonDetailsDevicesCell,
-SmartHomeAddonDetailsDeviceItemCell, LabelCell, GenericSpaceCell, KeyValueCell.
-Rejected earlier: SmartHomeAddonsIncludedCell (always shows chevron),
-SHDeviceLandingDeliveryInfoCell (fixed 72pt icon + fixed title height),
-SHVideoBannerCell (needs thumbnail + play image).
-NOTE: KeyValueCell hardcodes .left/.right alignment in its own viewModelAssigned(), so
-spec rows do not mirror in Arabic — accepted because it is the cell the user named.
+Cells used (searched first, nothing new created): SHCompatibilityTableViewCell (overview
+banner), SmartHomeAddonDetailsBenefitCell, SmartHomeAddonDetailsBulletCell,
+SmartHomeAddonDetailsDevicesCell, SmartHomeAddonDetailsDeviceItemCell, LabelCell,
+GenericSpaceCell, KeyValueCell.
+Rejected: SmartHomeAddonsIncludedCell (always chevron), SHDeviceLandingDeliveryInfoCell
+(fixed 72pt icon + title height), SHVideoBannerCell (needs play-icon URL + video URL),
+SmartHomePromoBannerCell / SmartHomeLivingBannerCell / BenefitsBannerTableViewCell /
+SmartLivingVideoSectionCell (all carry text or price content).
+
+URL handling (important):
+- SHCompatibilityTableViewCell and SHVideoBannerCell resolve through
+  SWCommonMethods.fullUrl, which BLINDLY prefixes the env base URL. Never hand them an
+  absolute URL; pass the raw CMS path. The device details mock was changed from an
+  absolute .mp4 to "/content/dam/.../nest-hero.jpg" for this reason.
+- Device images still go through the VM's getImageUrl (handles absolute and relative).
 
 Storyboard (SmartHome.storyboard, scene `sdd-vc`):
 - storyboardIdentifier "SmartHomeDeviceDetailsViewController"; root bgMidnight5
   (0.9568627451/0.9529411765/0.9607843137); BaseLabel title safeArea.top+16 / leading+16;
   32x32 close centerY with title, trailing = safeArea.trailing-16; StandardTableView
   (dataMode none, plain, no separators) top = title.bottom+8, leading/trailing/bottom to
-  view; outlets titleLabel, closeButton, tableView (VC subclasses StandardListViewController).
+  view; outlets titleLabel, closeButton, tableView (subclasses StandardListViewController).
 
 Project registration: group FD0000000000000000000000 (SmartHomeDeviceDetails) with
 Domain/Presentation subgroups FD...04/05, file refs FD...01/02/03, build files FD...11/12/13,
 child of the SmartHome group, entries in the app Sources phase.
-
-Data layer (pre-existing): SmartHomeAddonDetailsScene/Data/SmartHomeDeviceDetailsRepo.swift
-  (Imp + Mock), Data/SmartHomeDeviceDetailsResponse.swift,
-  Domain/SmartHomeDeviceDetailsUseCase.swift.
-  Endpoint: EndPoints.SmartHome.deviceDetails =
-  "devices/api/smarthome-devicedetails-headlessdata".
-  Mock payload: title/tabs/overview/keyHighlights/compatibility/smartDevices/specifications.
 
 ====================================================================
 3. SMART HOME ADDON DETAILS SCENE (done)
@@ -113,15 +128,10 @@ Path: .../Scenes/SmartHome/SmartHomeAddonDetailsScene/
   Presentation/Cells/SmartHomeAddonDetailsDevicesCell.swift/.xib,
   Presentation/Cells/SmartHomeAddonDetailsDeviceItemCell.swift/.xib
   (Section header cell deleted; section headers are LabelCell.)
-- Coordinator: `SmartHomeAddonDetailsUseCases` now holds ONLY howItWorksUseCase
-  (deviceDetailsUseCase removed). No stored viewController. `deviceDetailsTapped()` is an
-  empty method (kept as the hook for the future device-details entry point).
-  VM action closure still calls self.deviceDetailsTapped().
 - Fully data-driven from the howItWorks response (tabs, overview, smartDevices,
   freeInstallSupport, promotions, additionalBenifits). Its own tab bar + section scrolling
-  (scrollToRow, selectedTabIndex, overviewRowIndex/freeInstallRowIndex) is still intact
-  here — that logic belongs to this scene, not to device details.
-- Presented as a .pageSheet from SmartHomeAddonsCoordinator; scene lives in
+  (scrollToRow, selectedTabIndex, overviewRowIndex/freeInstallRowIndex) lives here and stays.
+- Presented as a .pageSheet from SmartHomeAddonsCoordinator/its wrapper; scene is in
   SmartHome.storyboard as "SmartHomeAddonDetailsViewController" (old dedicated storyboard
   deleted). Close X dismisses.
 - Layout: title .h24 safeArea.top+16; close 32x32 trailing 16; table top = title.bottom+8;
@@ -130,12 +140,11 @@ Path: .../Scenes/SmartHome/SmartHomeAddonDetailsScene/
   item 184x220, sectionInset 16, RTL via semanticContentAttribute.
 - No tableView.contentInset (indentation lives in the cells).
 - Fonts: .h24 title, .h2 card title, .h8 section header/bottom bar, .f10 validity/autoRenews/
-  footnote/device brand, .f7 device footnote, .smallRegular VAT. Tabs: TabCellModel font .h5,
+  footnote/device brand, .f7 device footnote, .smallRegular VAT. Tabs: TabCellModel .h5,
   TabsCellModel(cellHeight 44, contentVerticalInset 12, cornerRadius 24).
-- Colors: bgMidnight5, midnight110/50/30/20, white100Percent; close X = system "xmark"
-  12pt semibold on a midnight20 circle.
-- pbxproj: group SmartHomeAddonDetailsScene (file IDs FA...A1-A4,A6,A7,A9,AB,AC;
-  groups FC...A1-A4).
+- Colors: bgMidnight5, midnight110/50/30/20, white100Percent; close X = "xmark" 12pt
+  semibold on a midnight20 circle.
+- pbxproj: group SmartHomeAddonDetailsScene (file IDs FA...A1-A4,A6,A7,A9,AB,AC; groups FC...A1-A4).
 - Known cosmetic issue, untouched: getDataSource() has a mis-indented closure.
 
 ====================================================================
@@ -147,14 +156,14 @@ Path: .../Scenes/SmartHome/SmartHomeAddonDetailsScene/
 - SmartHomeConfigurationViewModel.createDataSourceAndUpdateView().
 - HybridAddOnsViewController.m: SmartHomeAddonsCoordinatorWrapper wiring.
 - SmartHomeAddonsViewModel.showServiceDetails(_ title: String, _ url: String).
-- Recent SmartHome work sits in `wip` commits. Working tree (KEEP ALL):
-    M EtisalatUAE/EtisalatUAE.xcodeproj/project.pbxproj
+- The SmartHome scene files (incl. SmartHomeDeviceDetails/) were committed by the user
+  mid-session; always re-run `git status` before assuming what is uncommitted.
+- Working tree at last compaction (KEEP ALL):
     M .../HomeScreenScene/Coordinator/HomeScreenCoordinator.swift
-    M .../SmartHomeAddonDetailsScene/SmartHomeAddonDetailsCoordinator.swift
+    M .../SmartHomeAddonDetailsScene/Data/SmartHomeDeviceDetailsRepo.swift   (mock banner URL)
     M .../SmartHomeConfigurationScene/Domain/SmartHomeConfigurationViewModel.swift
-    M .../SmartHomeScene/Presentation/SmartHome.storyboard
-    M EtisalatUAE/Sections/.../EtisalatShop/ViewController/HybridAddOnsViewController.m
-    ?? .../Scenes/SmartHome/SmartHomeDeviceDetails/
+    M .../SmartHomeDeviceDetails/Domain/SmartHomeDeviceDetailsViewModel.swift (overview banner)
+    M .../Sections/Etisalat Store/EtisalatShop/ViewController/HybridAddOnsViewController.m
 
 ====================================================================
 5. VERIFICATION / ENVIRONMENT
@@ -167,28 +176,33 @@ Path: .../Scenes/SmartHome/SmartHomeAddonDetailsScene/
     xmllint --noout <storyboard/xib>
     xcrun ibtool --compile /tmp/out <file>     -> emits <Scene>ViewController.nib
     plutil -lint EtisalatUAE/EtisalatUAE.xcodeproj/project.pbxproj
+    python3 -c 'json.loads(...)' for the repo mock payloads
 - Constraints/gotchas:
   - `instanceFromStoryboard` needs an explicit type annotation on the let.
   - `instanceFromStoryboard` calls `setupBinding()` for us; StandardViewController does NOT
-    call it from viewDidLoad, so bindings exist before the data loads.
+    call it from viewDidLoad, so bindings exist before data loads.
   - StandardListViewController auto-registers a nib per model.reusableIdentifier(), so any
-    xib already in the app target (KeyValueCell, LabelCell, TabsCell...) just works.
+    xib already in the app target (KeyValueCell, LabelCell, SHCompatibilityTableViewCell...)
+    just works without pbxproj registration.
   - SmartHomeAddonDetailsDeviceItemCell has static func identifier() (UICollectionViewCell).
   - TabsCell binds selectedTabIndex with notifyDelegate true (cellSelected on appearance).
   - MEBaseViewController constrains view only when mainContainerView is set (ours is nil).
-  - Deployment target 15.6 (some targets 12.0) -> always guard sheet APIs with #available.
+  - Deployment target 15.6 (some targets 12.0) -> guard sheet APIs with #available.
   - Locale.isArabic; Images.SmartHome.calendar = calendar_check.
-  - When piping a command through head/tail, read ${PIPESTATUS[0]} for the real status.
+  - When piping through head/tail, read ${PIPESTATUS[0]} for the real status.
+  - filenames in this repo contain spaces; never feed `find` output to xargs unquoted.
 
 ====================================================================
 6. OPEN ITEMS / LIKELY NEXT
 ====================================================================
-1. Give SmartHomeDeviceDetails a real entry point (deviceDetailsTapped is empty and the
-   coordinator is never constructed); SmartHomeAddonsCoordinator owns the nav stack.
+1. Overview banner styling: reused SHCompatibilityTableViewCell has an 8pt radius (mock
+   scr.png looks ~16-20) and selectionStyle = .default (brief tap highlight). Both live in
+   the shared xib used by the configuration screen, so make them per-use configurable
+   instead of editing the shared xib.
 2. Device cards inside device details are non-interactive by design (no API params).
-3. KeyValueCell RTL alignment (.left/.right hardcoded) if Arabic mirroring matters.
+3. KeyValueCell hardcodes .left/.right alignment, so spec rows do not mirror in Arabic.
 4. Cosmetic: indent fix in SmartHomeAddonDetailsViewModel.getDataSource().
 5. Verify on device/simulator once Pods/DerivedData are repaired (live request flow,
-   RTL/Arabic pass, sheet stacking behaviour).
+   RTL/Arabic pass, sheet stacking behaviour, banner image loading).
 
 (End of file)
