@@ -244,7 +244,9 @@ Path: .../Scenes/SmartHome/SmartHomeAddonDetailsScene/
 5. Out-of-stock banner placement: currently inserted at tempDataSource index 0 (top of
    whole screen) per literal "index zero" instruction. Confirm with user whether it should
    instead be index 0 of the included-bundle section cells only.
-6. Verify on device/simulator once Pods/DerivedData are repaired (live request flow,
+6. Out-of-stock banner 28pt height: label top/bottom 12pt constraints may compress/clip
+   multiline text; confirm whether label/icon should be vertically centered in 28pt instead.
+7. Verify on device/simulator once Pods/DerivedData are repaired (live request flow,
    RTL/Arabic pass, sheet stacking behaviour, banner image loading).
 
 (End of file)
