@@ -30,10 +30,35 @@ This file:            ~/gitcloned/Mars/comp.text  (update on EVERY compaction re
 ====================================================================
 State: Both SmartHome detail scenes are built, data-driven and connected:
   addons list -> addon details sheet -> device details sheet (overview banner included).
+NEW: SmartHomeConfigurationViewModel out-of-stock banner for included bundle (see 2a).
 Verified: swiftc -parse on every touched Swift file, xmllint, ibtool --compile,
   plutil -lint, mock JSON re-parsed with python json.
 Not verified: full compile/build (environment cannot build, §5); nothing run on device.
 Not committed: working tree only (§4).
+
+====================================================================
+2a. SMART HOME CONFIGURATION — INCLUDED BUNDLE OUT-OF-STOCK BANNER (DONE)
+====================================================================
+- SmartHomeConfigurationViewModel: added `private var inStock: Bool` computed from
+  includedInTheBundleDataSource (false if any IncludedBundle.inStock is false or null,
+  true otherwise; nil dataSource -> true).
+- When inStock == false, inserts InfoCardTableViewCellModel at index ZERO of
+  tempDataSource (literal "add to data source at index zero"):
+    text: Strings.SmartHome.addonOutOfStock
+    iconType: .notificationWarning
+    backgroundColor: AppBackgroundColor.notificationWarning (rgba(255,217,87,1))
+- Reused existing cell InfoCardTableViewCell (AutoPay&AutoRecharge scene) — icon +
+  label side by side, configurable bg. Searched project first (standing rule).
+  Already used in this VM (outOfStock) and auto-registered by StandardListViewController.
+- InfoCardTableViewCellIconType: added case .notificationWarning ->
+  UIImage(named: "notification-warning-icon") (asset in HomeMoveRevamp.xcassets).
+- Strings+SmartHome.swift: added addonOutOfStock -> "smart_home_addon_out_of_stock".
+- English_Resources.plist + Arabic_Resources.plist: added key
+  smart_home_addon_out_of_stock = "Sorry, this add-on is out of stock"
+  (English value used in Arabic for now). Both plists pass plutil -lint.
+- AMBIGUITY RESOLVED: "index zero" interpreted as tempDataSource.insert(at: 0)
+  (top of whole screen). If user meant index zero of the included-bundle section
+  cells only, adjust to insert into the `cells` array instead.
 
 ====================================================================
 2. SmartHomeDeviceDetails SCENE
@@ -158,11 +183,14 @@ Path: .../Scenes/SmartHome/SmartHomeAddonDetailsScene/
 - SmartHomeAddonsViewModel.showServiceDetails(_ title: String, _ url: String).
 - The SmartHome scene files (incl. SmartHomeDeviceDetails/) were committed by the user
   mid-session; always re-run `git status` before assuming what is uncommitted.
+- The included-bundle out-of-stock banner work (§2a: InfoCardTableViewCell .notificationWarning
+  case, Strings+SmartHome.addonOutOfStock, both Resources plists, and the VM inStock/banner
+  logic) was ALSO committed by the user mid-session (commits fa75098cd3c / ccc53a5347).
 - Working tree at last compaction (KEEP ALL):
     M .../HomeScreenScene/Coordinator/HomeScreenCoordinator.swift
-    M .../SmartHomeAddonDetailsScene/Data/SmartHomeDeviceDetailsRepo.swift   (mock banner URL)
     M .../SmartHomeConfigurationScene/Domain/SmartHomeConfigurationViewModel.swift
-    M .../SmartHomeDeviceDetails/Domain/SmartHomeDeviceDetailsViewModel.swift (overview banner)
+      (only uncommitted VM diff: added createDataSourceAndUpdateView() in the else branch
+       of getDeviceDetail's response handler — user's own change)
     M .../Sections/Etisalat Store/EtisalatShop/ViewController/HybridAddOnsViewController.m
 
 ====================================================================
@@ -202,7 +230,10 @@ Path: .../Scenes/SmartHome/SmartHomeAddonDetailsScene/
 2. Device cards inside device details are non-interactive by design (no API params).
 3. KeyValueCell hardcodes .left/.right alignment, so spec rows do not mirror in Arabic.
 4. Cosmetic: indent fix in SmartHomeAddonDetailsViewModel.getDataSource().
-5. Verify on device/simulator once Pods/DerivedData are repaired (live request flow,
+5. Out-of-stock banner placement: currently inserted at tempDataSource index 0 (top of
+   whole screen) per literal "index zero" instruction. Confirm with user whether it should
+   instead be index 0 of the included-bundle section cells only.
+6. Verify on device/simulator once Pods/DerivedData are repaired (live request flow,
    RTL/Arabic pass, sheet stacking behaviour, banner image loading).
 
 (End of file)
