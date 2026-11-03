@@ -1,216 +1,179 @@
 COMPACTION STATE — MobileDigitalApp iOS (mobiledigitalappios 13)
-Updated: 2026-11-02
+Updated: 2026-11-03
+
+Repo root:            /Users/aliamin/gitcloned/mobiledigitalappios 13
+This file:            ~/gitcloned/Mars/comp.text  (only at user's compaction request)
 
 ====================================================================
 0. USER WORKFLOW RULES (standing)
 ====================================================================
 - ApplicationTheme tokens only (colors/fonts/typography). RTL-safe: leading/trailing,
   localisedAlignment(), localized assets (chevronBlackEng/Ar).
-- NEVER create a new cell without first searching the project for a reusable similar cell
-  and REMINDING the user of this step.
-- Text-only cells MUST reuse `LabelCell` (new standing rule from user).
+- NEVER create a new cell without first searching the project for a reusable similar
+  cell AND reminding the user that this search was done.
+- Text-only cells MUST reuse `LabelCell`.
 - Prefer extending an EXISTING related storyboard/xib over creating a new one
-  (e.g. use SmartHome.storyboard for SmartHome scenes).
+  (SmartHome scenes live in SmartHome.storyboard).
 - No `// MARK: - Outlets`, `// MARK: - Cell Model`, `// MARK: - Actions`.
 - Two blank lines between class properties and methods.
 - No explanatory comments in new code.
-- Selection state via `StandardCellModel.state` + `updateUITOSelectedState()` /
-  `updateUITOUnselectedState()`, not `isSelected` flags.
-- Always `guard let self else { return }` inside `[weak self]` closures.
+- Selection via `StandardCellModel.state` + `updateUITOSelectedState()/...UnselectedState()`,
+  never `isSelected` flags.
+- Always `guard let self else { return }` inside `[weak self]`.
 - Mocks only under `#if DEBUG`; Imp otherwise.
 - If Xcode-side changes are found, ask keep/discard before acting.
-- REVIEW AGENT: DO NOT spawn the reviewer subagent unless the user explicitly asks for it.
-  (The earlier "always review with another agent" workflow was withdrawn by the user on
-  2026-11-02. Do not call subagents for review by default. Verify changes myself.)
-- `comp.text` (this file, ~/Desktop/comp.text) is the compaction state; update only at
-  the next compaction request.
+- DO NOT spawn the reviewer subagent unless explicitly asked. Verify myself.
+- Update this file only when the user asks for a compaction.
 
 ====================================================================
-1. CURRENT TASK (IN PROGRESS)
+1. WHERE WE ARE (2026-11-03)
 ====================================================================
-STATUS 2026-11-02: data layer IMPLEMENTED for both howItWorks and deviceDetails (see below).
-Use case injected into VM; UI wiring for device details tap in place (empty handler).
-User request (verbatim, message truncated at "add it to "):
-  "For 'SmartHomeAddonDetailsViewModel' usecases we need to add a usecase/repo that calls
-   following API devices/api/smarthome-howitworks-headlessdata (add it to
-   We should have both repoImp and repoMock. Request object is just SWBaseRequestModel and
-   response object should match following mock.
-   repoMock should return following response: { ...tabs/overview/smartDevices/
-   freeInstallSupport/promotions/additionalBenifits... }"
-
-Mock JSON (exact):
-{
-  "tabs": ["Core Benifits", "Promotional and Additional Benifits"],
-  "overview": {
-    "title": "7 Smart Devices and Home Control Services",
-    "validity": "Validity 30 Months Contract",
-    "descriptionOne": "Auto Renews",
-    "descriptionTwo": "Auto Renews after contract ends Addon price will reduce to AED xx/month"
-  },
-  "smartDevices": {
-    "sectionHeading": "Smart Devices",
-    "cmsDevicesScroll": [
-      { "imageUrl": "abcd.com",
-        "deviceTitle": "2 Thermostats",
-        "deviceDescription": "Adapter may be required",
-        "moreDetailsUrl": "abcd.com",
-        "productKeys": "home_security_devices" }
-    ]
-  },
-  "freeInstallSupport": {
-    "sectionHeading": "Free Installation & Support",
-    "description": "Your smart devices will be delivered to you and installed free of charge, plus you will also get after sales service by us",
-    "thumbnailUrl": "/content/dam/cfm-etisalat/bau-consumer/2026/elife/elife-x-smart-home/image/stb-des-inner_tcm313-168286.jpg"
-  },
-  "promotions": {
-    "sectionHeading": "Promotions",
-    "bullets": ["Parental control free for three months AED 30/month later",
-                "Parental control free for three months AED 30/month later"]
-  },
-  "additionalBenifits": {
-    "sectionHeading": "Additional Benifits",
-    "bullets": ["50% off on full home Wifi (AED 50.00/month) was AED 99",
-                "50% off on full home Wifi (AED 50.00/month) was AED 99"]
-  }
-}
-
-Decisions/assumptions to confirm with reviewer:
-- Endpoint to be added under EndPoints (likely ELifeAssure or new SmartHome enum):
-  "devices/api/smarthome-howitworks-headlessdata".
-- Request = SWBaseRequestModel (no custom params).
-- Response type name: SmartHomeHowItWorksResponse (adapters/models nested).
-- Use case + repo follow the SmartHomeGetBundleDevices pattern:
-    Data/<X>Repo.swift (protocol + RepoImp + RepoMock, mock JSON in #if DEBUG or as in sibling)
-    Domain/<X>UseCase.swift (UseCase struct with Input/Return/RepoType)
-- Add use case to SmartHomeUseCases or a scene-specific use case container, wire in
-  SmartHomeAddonDetailsCoordinator, then view model maps response -> existing cells
-  (tabs, overview, section headers via LabelCellModel, devices, plus new sections
-  freeInstallSupport/promotions/additionalBenifits TBD).
-
-Existing patterns (reference):
-- EtisalatUAE/EtisalatUAE/Digital2022/Scenes/SmartHome/SmartHomeAddonsScene/Data/
-  SmartHomeGetBundleDevicesRepo.swift
-- .../Data/SmartHomeDevicesRequest.swift
-- .../Domain/SmartHomeGetBundleDevicesUseCase.swift
-- .../SmartHomeAddonsCoordinator.swift (repo -> use case -> view model wiring)
-- EndPoints: EtisalatUAE/EtisalatUAE/Swift/Core/Network/EndPoints/EndPoints.swift
-  (ELifeAssure.getSmartHomeBundleDetails at ~line 967)
-- NetworkManager.executeGet / executePost:
-  EtisalatUAE/EtisalatUAE/Swift/Core/Network/NetworkManager.swift
-- SWBaseRequestModel: EtisalatUAE/EtisalatUAE/Swift/Core/Model/SWBaseRequestModel.swift
+State: SmartHome addon details + device details scenes are BUILT and wired end to end.
+  Addons list -> addon details bottom sheet -> device details bottom sheet, all from
+  data (repos/usecases/mocks), no hard-coded copy left in either details screen.
+Verified: swiftc -parse, xmllint, ibtool --compile, plutil -lint (see §5).
+Not verified: full compile/build — environment cannot build (§5).
+Not committed: everything below is working-tree only (see §4).
 
 ====================================================================
-1a. DEVICE DETAILS USE CASE (DONE)
+2. SmartHomeDeviceDetails SCENE (NEW, 2026-11-03)
 ====================================================================
-- Created SmartHomeDeviceDetails repo (imp+mock), response, use case.
-- Endpoint: devices/api/smarthome-devicedetails-headlessdata (EndPoints.SmartHome.deviceDetails).
-- Added deviceDetailsUseCase to SmartHomeAddonDetailsUseCases (defined in coordinator file).
-- Coordinator wires repo+usecase; VM actions.deviceDetailsTapped (empty impl).
-- Devices cell model selectDeviceHandler (non-optional); cell tap calls it -> VM -> actions.deviceDetailsTapped.
-- Removed SmartHomeAddonDetailsUseCases.swift from project.pbxproj.
+Path: EtisalatUAE/EtisalatUAE/Digital2022/Scenes/SmartHome/SmartHomeDeviceDetails/
+  Domain/SmartHomeDeviceDetailsViewModel.swift
+  SmartHomeDeviceDetailsCoordinator.swift        (also holds SmartHomeDeviceDetailsUseCases)
+  Presentation/SmartHomeDeviceDetailsViewController.swift
 
-====================================================================
-2. SMART HOME ADDON DETAILS SCENE
-Files (all in EtisalatUAE/EtisalatUAE/Digital2022/Scenes/SmartHome/SmartHomeAddonDetailsScene/):
-  SmartHomeAddonDetailsCoordinator.swift
-  Domain/SmartHomeAddonDetailsViewModel.swift
-  Presentation/SmartHomeAddonDetailsViewController.swift
-  Presentation/Cells/SmartHomeAddonDetailsBenefitCell.swift/.xib
-  Presentation/Cells/SmartHomeAddonDetailsDevicesCell.swift/.xib
-  Presentation/Cells/SmartHomeAddonDetailsDeviceItemCell.swift/.xib
-  (Section header cell was DELETED; now uses LabelCell.)
-
-Presentation:
-- Presented as native bottom sheet from SmartHomeAddonsCoordinator:
-    modalPresentationStyle = .pageSheet
-    if #available(iOS 15.0, *), let sheet = vc.sheetPresentationController {
-        sheet.detents = [.large()]; sheet.prefersGrabberVisible = true
-    }
-    input.navigationController.present(vc, animated: true)
-- Close X -> dismiss(animated: true). No nav-bar hide/show overrides.
-- Coordinator loads scene from "SmartHome" storyboard:
-    fromStoryboard: "SmartHome"
-- Scene was merged into:
-    EtisalatUAE/EtisalatUAE/Digital2022/Scenes/SmartHome/SmartHomeScene/Presentation/SmartHome.storyboard
-  with storyboardIdentifier "SmartHomeAddonDetailsViewController".
-  Old SmartHomeAddonDetails.storyboard deleted + removed from project.pbxproj.
-  SmartHome.storyboard already contains SmartHomeViewController + SmartHomeAddonsViewController.
+Flow:
+- Tapping a device card in addon details -> VM actions.deviceDetailsTapped ->
+  SmartHomeAddonDetailsCoordinator.deviceDetailsTapped() -> builds + starts
+  SmartHomeDeviceDetailsCoordinator(input: viewController + deviceDetailsUseCase).
+- Addon coordinator keeps `private weak var viewController` and
+  `private var deviceDetailsUseCase` (assigned in start()); the use case is created once
+  in the addon coordinator, so there is a single repo construction path.
+- Details sheet is presented from the addon sheet VC (sheet-over-sheet, .pageSheet,
+  [#available(iOS 15)] detents [.large()] + grabber). Close X dismisses.
 
 View model:
-- typealias UseCasesType = Void? (to be replaced by the new use case)
-- `let useCases: UseCasesType = nil`, `let actions: ActionsType = nil`
-- dataSource: tabs (TabsCellModel), benefit (custom cell), section header (LabelCellModel),
-  devices (horizontal collection cell).
-- Section header now:
-    private func getSectionHeaderCellModel(title: String) -> LabelCellModel {
-        let textStyle: TextStyle = .custom(color: AppTextColor.midnight110,
-                                           alignment: .localisedAlignment(), font: .h8)
-        return LabelCellModel(content: title, textStyle: textStyle,
-                              backgroundColor: AppBackgroundColor.bgMidnight5)
-    }
-- Still dummy content (hard-coded English strings).
+- Observable: dataSource, scrollToRow (Int?), screenTitle (String?).
+- viewDidLoad -> deviceDetailsUseCase.execute(input: ()) -> on error actions.showError,
+  else screenTitle + dataSource from response.
+- Tabs scroll to section rows via scrollToRow (indexes tracked when building the list).
+- Response sections -> cells:
+    tabs            -> TabsCellModel
+    overview        -> SmartHomeAddonDetailsBenefitCellModel(title: sectionHeading,
+                       footnote: description)  [imageVideoUrl deliberately NOT rendered:
+                       it is an .mp4 and no existing cell takes a bare video URL]
+    keyHighlights   -> heading LabelCellModel + SmartHomeAddonDetailsBulletCellModel each
+    compatibility   -> same heading/description/bullets pattern
+    smartDevices    -> heading LabelCellModel + SmartHomeAddonDetailsDevicesCellModel
+                       (selectDeviceHandler = live no-op: API takes no per-device params)
+    specifications  -> heading LabelCellModel + description LabelCellModel +
+                       title/description LabelCellModel pairs
+    spacers         -> GenericSpaceCellVwModel
+- Headings are LabelCellModel(.h8, midnight110, bgMidnight5); paragraphs are LabelCellModel.
 
-Layout/spacing:
-- Storyboard: root bg bgMidnight5; title pinned safeArea.top +16; close 32x32 trailing 16;
-  table top = title.bottom +8; bottom bar pinned to view bottom, Continue 48 high ending
-  safeArea.bottom -12.
-- Benefit cell xib: top padding 8, bottom padding 24 (container card).
-- Devices cell xib: top padding 8, bottom padding 16, height 244; collection item 184x220;
-  sectionInset left/right 16; RTL via semanticContentAttribute.
-- `tableView.contentInset` REMOVED (was bottom 16) — indentation lives in cells now.
-- Fonts: screen title .h24, card title .h2, section header .h8, validity/autoRenews/
-  footnote .f10, device brand .f10, device footnote .f7, VAT .smallRegular, bottom bar .h8.
-- Colors: bgMidnight5 (244,243,245), midnight110 text, midnight50, midnight30, midnight20,
-  white100Percent. Close X = system "xmark" 12pt semibold on midnight20 circle.
-- Tabs: TabsCellModel(title:"", cellHeight:44, contentVerticalInset:12, cornerRadius:24,
-  selectedTabIndex 0), TabCellModel font h5.
+Cells used (searched first, nothing new created): SmartHomeAddonDetailsBenefitCell,
+SmartHomeAddonDetailsBulletCell, SmartHomeAddonDetailsDevicesCell,
+SmartHomeAddonDetailsDeviceItemCell, LabelCell, TabsCell, GenericSpaceCell.
+Rejected after checking: SmartHomeAddonsIncludedCell (always shows chevron),
+SHDeviceLandingDeliveryInfoCell (fixed 72pt icon + fixed title height),
+SHVideoBannerCell (needs thumbnail + play image).
 
-Project registration:
-- Swift/xib files registered in EtisalatUAE/EtisalatUAE.xcodeproj/project.pbxproj under group
-  SmartHomeAddonDetailsScene (IDs FA...A1-A4,A6,A7,A9,AB,AC; groups FC...A1-A4).
-- Removed: SmartHomeAddonDetails.storyboard, SmartHomeAddonDetailsSectionHeaderCell.{swift,xib}
-  and their pbxproj build/file/group entries.
+Storyboard (SmartHome.storyboard, scene `sdd-vc`):
+- storyboardIdentifier "SmartHomeDeviceDetailsViewController"; root bgMidnight5
+  (0.9568627451/0.9529411765/0.9607843137, systemBackgroundColor named color kept);
+  BaseLabel title safeArea.top+16 / leading+16; 32x32 close centerY with title,
+  trailing = safeArea.trailing-16; StandardTableView (dataMode none, plain, no separators)
+  top = title.bottom+8, leading/trailing/bottom to view; outlets titleLabel, closeButton,
+  tableView (VC subclasses StandardListViewController).
+
+Project registration: group FD0000000000000000000000 (SmartHomeDeviceDetails) with
+Domain/Presentation subgroups FD...04/05, file refs FD...01/02/03, build files FD...11/12/13,
+child of the SmartHome group, entries in the app Sources phase.
+
+Data layer (pre-existing, unchanged today):
+  .../SmartHomeAddonDetailsScene/Data/SmartHomeDeviceDetailsRepo.swift
+  .../Data/SmartHomeDeviceDetailsResponse.swift
+  .../Domain/SmartHomeDeviceDetailsUseCase.swift
+  Mock: title/tabs/overview/keyHighlights/compatibility/smartDevices/specifications.
 
 ====================================================================
-3. EARLIER COMPLETED WORK (background)
+3. SMART HOME ADDON DETAILS SCENE (done)
 ====================================================================
-- SmartHome addons scene: cells (SmartHomeAddonsCell, IncludedCell, RadioCell, UserCell),
+Path: .../Scenes/SmartHome/SmartHomeAddonDetailsScene/
+  SmartHomeAddonDetailsCoordinator.swift, Domain/SmartHomeAddonDetailsViewModel.swift,
+  Presentation/SmartHomeAddonDetailsViewController.swift,
+  Presentation/Cells/SmartHomeAddonDetailsBenefitCell.swift/.xib,
+  Presentation/Cells/SmartHomeAddonDetailsDevicesCell.swift/.xib,
+  Presentation/Cells/SmartHomeAddonDetailsDeviceItemCell.swift/.xib
+  (Section header cell was deleted; section headers are LabelCell.)
+- Fully data-driven from the howItWorks response (tabs, overview, smartDevices,
+  freeInstallSupport, promotions, additionalBenifits).
+- Presented as a .pageSheet from SmartHomeAddonsCoordinator; scene lives in
+  SmartHome.storyboard as "SmartHomeAddonDetailsViewController" (old dedicated storyboard
+  deleted). Close X dismisses.
+- Layout: title .h24 safeArea.top+16; close 32x32 trailing 16; table top = title.bottom+8;
+  bottom bar with Continue (48 high) ending safeArea.bottom-12.
+- Benefit cell xib: 8 top / 24 bottom padding. Devices cell xib: 8/16 padding, height 244,
+  item 184x220, sectionInset 16, RTL via semanticContentAttribute.
+- No tableView.contentInset (indentation lives in the cells).
+- Fonts: .h24 title, .h2 card title, .h8 section header/bottom bar, .f10 validity/autoRenews/
+  footnote/device brand, .f7 device footnote, .smallRegular VAT. Tabs: TabCellModel font .h5,
+  TabsCellModel(cellHeight 44, contentVerticalInset 12, cornerRadius 24).
+- Colors: bgMidnight5, midnight110/50/30/20, white100Percent; close X = system "xmark"
+  12pt semibold on a midnight20 circle.
+- pbxproj: group SmartHomeAddonDetailsScene (file IDs FA...A1-A4,A6,A7,A9,AB,AC;
+  groups FC...A1-A4).
+- Known cosmetic issue, untouched: getDataSource() has a mis-indented closure.
+
+====================================================================
+4. EARLIER WORK / GIT STATE
+====================================================================
+- SmartHome addons scene cells (SmartHomeAddonsCell, IncludedCell, RadioCell, UserCell),
   eLifeAssure refactor, bundle devices scene, radio selection, transparent label cells,
   Strings.SmartHome.addToYourPlan.
-- SmartHomeConfigurationViewModel: added createDataSourceAndUpdateView().
+- SmartHomeConfigurationViewModel.createDataSourceAndUpdateView().
 - HybridAddOnsViewController.m: SmartHomeAddonsCoordinatorWrapper wiring.
-- SmartHomeAddonsViewModel: showServiceDetails(_ title: String, _ url: String);
-  details tap passes service title per service.
-- Uncommitted changes exist in: SmartHomeAddonDetailsScene (untracked), project.pbxproj,
-  SmartHomeAddonsViewModel.swift, SmartHomeAddonsCoordinator.swift,
-  SmartHomeConfigurationViewModel.swift, HybridAddOnsViewController.m,
-  SmartHome.storyboard. Keep all.
+- SmartHomeAddonsViewModel.showServiceDetails(_ title: String, _ url: String).
+- All recent SmartHome work is in `wip` commits. Working tree (KEEP ALL):
+    M EtisalatUAE/EtisalatUAE.xcodeproj/project.pbxproj
+    M .../HomeScreenScene/Coordinator/HomeScreenCoordinator.swift
+    M .../SmartHomeAddonDetailsScene/SmartHomeAddonDetailsCoordinator.swift
+    M .../SmartHomeConfigurationScene/Domain/SmartHomeConfigurationViewModel.swift
+    M .../SmartHomeScene/Presentation/SmartHome.storyboard
+    M EtisalatUAE/Sections/.../EtisalatShop/ViewController/HybridAddOnsViewController.m
+    ?? .../Scenes/SmartHome/SmartHomeDeviceDetails/
 
 ====================================================================
-4. VERIFICATION / ENVIRONMENT
+5. VERIFICATION / ENVIRONMENT
 ====================================================================
 - Full `xcodebuild` is NOT usable: Pods/DerivedData broken ('JSONModel.h' not found,
   GoogleUtilities/FirebaseCrashlytics/FBSDK missing headers, Alamofire/SwiftyJSON module
-  errors, bridging-header PCH failure). No errors ever reference new files.
-- Use instead:
+  errors, bridging-header PCH failure). Errors never reference new files.
+- Use instead (all currently passing):
     xcrun swiftc -parse <files...>
     xmllint --noout <storyboard/xib>
-    xcrun ibtool --compile /tmp/<name> <file>
+    xcrun ibtool --compile /tmp/out <file>     -> emits <Scene>ViewController.nib
     plutil -lint EtisalatUAE/EtisalatUAE.xcodeproj/project.pbxproj
-- `instanceFromStoryboard` call requires explicit type annotation:
-    let vc: SmartHomeAddonDetailsViewController = .instanceFromStoryboard(...)
-- `SmartHomeAddonDetailsDeviceItemCell` has static func identifier() (UICollectionViewCell).
-- TabsCell binds selectedTabIndex with notifyDelegate true (cellSelected fires on appearance).
-- MEBaseViewController only constrains view when mainContainerView is set (ours is nil).
-- Deployment target: app target 15.6 (some targets 12.0) -> guard sheet API with #available.
-- Locale.isArabic, Images.SmartHome.calendar = calendar_check, Images.LocationSearchBy.homeMoveDeciveImage.
+- Constraints/gotchas:
+  - `instanceFromStoryboard` needs an explicit type annotation on the let.
+  - `instanceFromStoryboard` calls `setupBinding()` for us (StandardViewController) — the
+    base class does NOT call it from viewDidLoad, so bindings exist before the data loads.
+  - SmartHomeAddonDetailsDeviceItemCell has static func identifier() (UICollectionViewCell).
+  - TabsCell binds selectedTabIndex with notifyDelegate true (cellSelected on appearance).
+  - MEBaseViewController constrains view only when mainContainerView is set (ours is nil).
+  - Deployment target 15.6 (some targets 12.0) -> always guard sheet APIs with #available.
+  - Locale.isArabic; Images.SmartHome.calendar = calendar_check.
+  - Do not pipe build/install output through tail without pipefail; use ${PIPESTATUS[0]}.
 
 ====================================================================
-5. LAST REVIEW ATTEMPT
+6. OPEN ITEMS / LIKELY NEXT
 ====================================================================
-A reviewer subagent was spawned for the LabelCell/storyboard/inset changes but the tool call
-was ABORTED (session ses_e79818011ffed9VVUWgyRlA1cp) before returning results. Those changes
-were validated manually (parse/ibtool/plutil) but NOT independently reviewed. If the user
-asks, re-run the reviewer for that change set.
+1. Device details overview media (overview.imageVideoUrl) is not shown — would need a
+   video/thumbnail cell (none reusable today).
+2. Device cards inside device details are non-interactive by design (no API params).
+3. Cosmetic: indent fix in SmartHomeAddonDetailsViewModel.getDataSource().
+4. Verify on device/simulator once Pods/DerivedData are repaired (live request flow,
+   RTL/Arabic pass, sheet stacking behaviour).
 
-(End of file - total 206 lines)
+(End of file)
