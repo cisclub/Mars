@@ -72,6 +72,25 @@ Not committed: working tree only (§4).
   cells only, adjust to insert into the `cells` array instead.
 
 ====================================================================
+2b. SMART HOME CONFIGURATION — ADDITIONAL DEVICES OUT-OF-STOCK DISABLE (DONE)
+====================================================================
+- SmartHomeConfigurationViewModel: in the additionalDevicesDataSource radio cell map,
+  if device.inStock == true -> state .selected/.unselected as before; else
+  model.state.value = .disabled. selectAdditionalDevice(at:) now also requires
+  device.inStock == true (defensive).
+- SmartHomeAddonsRadioCell (SmartHomeAddonsScene/Presentation/Cells):
+  * updateUITODisabledState() override: isUserInteractionEnabled = false;
+    containerView.backgroundColor = AppBackgroundColor.bgMidnight5 (rgba(244,243,245,1));
+    titleLabel + subtitleLabel dimmed to AppTextColor.midnight50; radio image =
+    radioButtonUnselected rendered .alwaysTemplate with tintColor midnight50 (gray).
+  * updateUITONormal/Selected/Unselected now call applyEnabledAppearance() first
+    (restores white container, midnight100 title, midnight50 subtitle, tintColor nil,
+    isUserInteractionEnabled = true) so a cell can recover if re-enabled.
+  * didTapRadio() guards model.state.value != .disabled (in addition to != .selected).
+- Radio PNGs are fixed-color assets; gray radio achieved via template rendering + tint.
+- Committed by user mid-session (SmartHomeAddonsRadioCell.swift clean in working tree).
+
+====================================================================
 2. SmartHomeDeviceDetails SCENE
 ====================================================================
 Path: EtisalatUAE/EtisalatUAE/Digital2022/Scenes/SmartHome/SmartHomeDeviceDetails/
@@ -194,9 +213,8 @@ Path: .../Scenes/SmartHome/SmartHomeAddonDetailsScene/
 - SmartHomeAddonsViewModel.showServiceDetails(_ title: String, _ url: String).
 - The SmartHome scene files (incl. SmartHomeDeviceDetails/) were committed by the user
   mid-session; always re-run `git status` before assuming what is uncommitted.
-- The included-bundle out-of-stock banner work (§2a: InfoCardTableViewCell .notificationWarning
-  case + per-use layout params, Strings+SmartHome.addonOutOfStock, both Resources plists,
-  and the VM inStock/banner logic) was ALSO committed by the user mid-session.
+- The included-bundle out-of-stock banner work (§2a) and the additional-devices radio
+  disable work (§2b) were ALSO committed by the user mid-session.
 - Working tree at last compaction (KEEP ALL):
     M .../HomeScreenScene/Coordinator/HomeScreenCoordinator.swift
     M .../SmartHomeConfigurationScene/Domain/SmartHomeConfigurationViewModel.swift
