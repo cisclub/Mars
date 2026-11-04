@@ -1,5 +1,5 @@
 COMPACTION STATE — MobileDigitalApp iOS (mobiledigitalappios 13)
-Updated: 2026-11-03
+Updated: 2026-11-04
 
 Repo root:            /Users/aliamin/gitcloned/mobiledigitalappios 13
 This file:            ~/gitcloned/Mars/comp.text  (update on EVERY compaction request)
@@ -26,13 +26,19 @@ This file:            ~/gitcloned/Mars/comp.text  (update on EVERY compaction re
 - Always update this file when doing a compaction (user's explicit instruction).
 
 ====================================================================
-1. WHERE WE ARE (2026-11-03)
+1. WHERE WE ARE (2026-11-04)
 ====================================================================
 State: Both SmartHome detail scenes are built, data-driven and connected:
   addons list -> addon details sheet -> device details sheet (overview banner included).
 NEW: SmartHomeConfigurationViewModel out-of-stock banner for included bundle (see 2a).
 NEW: howItWorks + deviceDetails now send cmsUrl/productType via SmartHomeHowItWorksRequest
   (see 2c); addon details coordinator no longer uses mocks.
+LATEST (2026-11-04):
+  - SmartHomeHowItWorksUseCase.Input: removed productType param; repo passes nil in request.
+  - SmartHomeDeviceDetailsUseCase.Input: KEEPS productType; value comes from selected
+    device's productKeys (SmartHomeHowItWorksResponse.smartDevices.cmsDevicesScroll).
+  - SmartHomeAddonDetailsDevicesCellModel.selectDeviceHandler now passes productKeys.
+  - SmartHomeAddonDetailsDeviceItemModel now has optional productKeys property.
 Verified: swiftc -parse on every touched Swift file, xmllint, ibtool --compile,
   plutil -lint, mock JSON re-parsed with python json.
 Not verified: full compile/build (environment cannot build, §5); nothing run on device.
@@ -96,23 +102,24 @@ Not committed: working tree only (§4).
 2c. HOWITWORKS + DEVICEDETAILS REQUEST (cmsUrl/productType) (DONE)
 ====================================================================
 - NEW file Data/SmartHomeHowItWorksRequest.swift: extends SWBaseRequestModel with
-  cmsUrl: String + productType: String. init(cmsUrl:productType:) has NO defaults
-  (empty-string defaults removed per user). CodingKeys + encode + decode.
-  Registered in project.pbxproj (Data group, Sources phase).
-- SmartHomeHowItWorksUseCase.Input: { cmsUrl: String, productType: String },
-  init no defaults; InputType = Input; execute forwards input to repo.
+  cmsUrl: String + productType: String?. init(cmsUrl:productType:) default nil for
+  productType (empty-string defaults removed per user). CodingKeys + encodeIfPresent +
+  decodeIfPresent.
+- SmartHomeHowItWorksUseCase.Input: { cmsUrl: String } ONLY (productType removed per user).
+  execute(input:) forwards to repo.
 - SmartHomeHowItWorksRepoImp: builds SmartHomeHowItWorksRequest(cmsUrl:input.cmsUrl,
-  productType:input.productType) and posts toParamDictionary (was bare SWBaseRequestModel).
-- SmartHomeDeviceDetailsUseCase.Input: same { cmsUrl, productType } (explicit init removed —
-  memberwise init used). SmartHomeDeviceDetailsRepoImp builds the SAME
-  SmartHomeHowItWorksRequest and posts to EndPoints.SmartHome.deviceDetails.
+  productType: nil) and posts toParamDictionary.
+- SmartHomeDeviceDetailsUseCase.Input: KEEPS { cmsUrl: String, productType: String }.
+  SmartHomeDeviceDetailsRepoImp builds the SAME SmartHomeHowItWorksRequest with
+  input.productType (from selected device) and posts to EndPoints.SmartHome.deviceDetails.
 - Threading (addon details): SmartHomeAddonsViewModel details action passes
   service.addonDetailsUrl ?? "" and service.productId -> showServiceDetails(title, url, productType)
   (action signature gained productType param). SmartHomeAddonsCoordinatorWrapper forwards
   url->cmsUrl and productType into SmartHomeAddonDetailsCoordinatorInput (now has cmsUrl +
   productType). Coordinator passes both to SmartHomeAddonDetailsViewModel (stores cmsUrl/productType)
-  and to howItWorks execute(input: .init(cmsUrl:productType:)).
-- deviceDetailsTapped: VM action is now (_ cmsUrl: String, _ productType: String) -> Void;
+  and to howItWorks execute(input: .init(cmsUrl:)).
+- deviceDetailsTapped: VM action is now (_ cmsUrl: String, _ productType: String?) -> Void;
+  SmartHomeAddonDetailsDevicesCellModel.selectDeviceHandler receives device.productKeys (String?).
   devices cell selectDeviceHandler calls actions.deviceDetailsTapped(cmsUrl, productType).
   Coordinator deviceDetailsTapped(cmsUrl:productType:) builds SmartHomeDeviceDetailsCoordinatorInput
   (now has cmsUrl + productType + deviceDetailsUseCase) and SmartHomeDeviceDetailsUseCase(repo:).
